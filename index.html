@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ASC Client Intake</title>
+<style>
+:root{--bg:#0e0f11;--card:#1a1b1e;--ink:#f4f4f2;--mut:#9b9fa6;--line:#2d2f34;--acc:#e5243b;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:20px 16px 50px}
+h1{font-size:28px;margin:8px 0 4px;letter-spacing:-.5px;border-left:5px solid var(--acc);padding-left:12px;text-transform:uppercase}
+.sub{color:var(--mut);margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:14px}
+h2{margin:0 0 4px;font-size:18px;color:var(--acc)}
+label.q{display:block;font-weight:600;margin:14px 0 6px;font-size:15px}
+.req{color:var(--acc)}
+input[type=text],input[type=number],input[type=tel],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:76px;resize:vertical}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer}
+.opt input{width:18px;height:18px;accent-color:var(--acc)}
+.msg{color:var(--acc);font-size:13px;margin-top:4px;display:none}
+.send{display:block;width:100%;margin-top:18px;padding:15px;border:0;border-radius:10px;background:#1fa855;color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}
+.copy{display:block;width:100%;margin-top:10px;padding:13px;border:1px solid var(--acc);border-radius:10px;background:transparent;color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.note{font-size:13px;color:var(--mut);margin-top:10px;text-align:center}
+.note a{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Addy Strength Co</h1>
+<p class="sub">Quick client questionnaire. Takes about 5 minutes. Answer honestly so I can build the right plan for you.</p>
+<form id="f" onsubmit="return false"></form>
+<button class="send" id="send">Send to Coach on WhatsApp</button>
+<button class="copy" id="copy">Or copy my answers (paste into WhatsApp)</button>
+<div class="note" id="note">Tapping the button opens WhatsApp with your answers ready to send.</div>
+</div>
+<script>
+const COACH="919987953618";
+const T=(id,l,o={})=>({id,l,t:"text",...o}),N=(id,l,o={})=>({id,l,t:"number",...o}),A=(id,l,o={})=>({id,l,t:"area",...o}),
+R=(id,l,opts,o={})=>({id,l,t:"radio",opts,...o}),C=(id,l,opts,o={})=>({id,l,t:"check",opts,...o}),S=(id,l,opts,o={})=>({id,l,t:"select",opts,...o});
+const S_=[
+{n:"About You",f:[T("name","Full name",{req:1}),N("age","Age",{req:1}),R("gender","Gender",["Male","Female","Other"],{req:1}),N("height","Height (cm)",{req:1}),N("weight","Weight (kg)",{req:1}),T("job","Occupation / college",{req:1})]},
+{n:"Goals",f:[C("goal","Main goal",["Fat loss","Muscle gain","Strength","General fitness"],{req:1}),T("deadline","Target weight or deadline (if any)"),A("why","Why is this goal important to you?")]},
+{n:"Training",f:[R("exp","Experience",["Beginner","Intermediate","Advanced"],{req:1}),R("loc","Where will you train?",["Gym","Home","Outdoors"],{req:1}),S("days","Days per week you can train",["2","3","4","5","6"],{req:1}),S("dur","Time per session",["30 min","45 min","60 min","75+ min"],{req:1}),A("train","What training have you done recently?")]},
+{n:"Injuries & Health",f:[A("inj","Any injuries, pain or movement limitations? (area, which movements hurt) Write 'None' if none.",{req:1}),A("med","Any medical conditions or medication? Write 'None' if none.",{req:1})]},
+{n:"Food",f:[S("diet","Diet type",["Vegetarian","Eggetarian","Non-vegetarian","Vegan","Jain"],{req:1}),A("allerg","Food allergies or foods you avoid"),R("cook","Who prepares your food?",["Myself","Family","Eat out / order in"],{req:1}),T("budget","Daily food budget (₹)"),S("meals","Meals per day you can manage",["2","3","4","5"],{req:1})]},
+{n:"Daily Routine",f:[T("wake","Wake-up time",{req:1}),T("work","Work / college timings",{req:1}),T("traint","Preferred training time",{req:1}),T("bed","Bedtime",{req:1}),S("sleep","Average sleep",["Under 5 hrs","5-6 hrs","6-7 hrs","7-8 hrs","8+ hrs"],{req:1}),S("stress","Stress level",["Low","Moderate","High"],{req:1})]},
+{n:"Coaching",f:[A("past","What has stopped you from reaching your goals before?"),R("acc","Check-in style you prefer",["Daily","Weekly","Firm and direct","Supportive"],{req:1}),T("waist","Waist measurement (cm), optional")]}
+];
+const f=document.getElementById("f"),all=S_.flatMap(s=>s.f);
+S_.forEach(s=>{
+ const c=document.createElement("div");c.className="card";
+ let h=`<h2>${s.n}</h2>`;
+ s.f.forEach(q=>{
+  h+=`<div class="fq" data-id="${q.id}"><label class="q">${q.l}${q.req?'<span class="req"> *</span>':""}</label>`;
+  if(q.t==="text"||q.t==="number")h+=`<input type="${q.t}" name="${q.id}" ${q.t==="number"?'inputmode="decimal" min="0"':""}>`;
+  else if(q.t==="area")h+=`<textarea name="${q.id}"></textarea>`;
+  else if(q.t==="select")h+=`<select name="${q.id}"><option value="">Select…</option>${q.opts.map(o=>`<option>${o}</option>`).join("")}</select>`;
+  else h+=`<div class="opts">${q.opts.map(o=>`<label class="opt"><input type="${q.t==="radio"?"radio":"checkbox"}" name="${q.id}" value="${o}"><span>${o}</span></label>`).join("")}</div>`;
+  h+=`<div class="msg">Please answer this.</div></div>`;
+ });
+ c.innerHTML=h;f.appendChild(c);
+});
+const val=q=>{const e=[...f.querySelectorAll(`[name="${q.id}"]`)];
+ return (q.t==="radio"||q.t==="check")?e.filter(x=>x.checked).map(x=>x.value):(e[0].value.trim()?[e[0].value.trim()]:[]);};
+function build(){
+ let first=null;
+ all.forEach(q=>{const d=f.querySelector(`.fq[data-id="${q.id}"]`),bad=q.req&&!val(q).length;
+  d.querySelector(".msg").style.display=bad?"block":"none";if(bad&&!first)first=d;});
+ if(first){first.scrollIntoView({behavior:"smooth",block:"center"});return null;}
+ let t="*ASC CLIENT INTAKE*\n";
+ S_.forEach(s=>{t+=`\n*${s.n}*\n`;s.f.forEach(q=>{const v=val(q);if(v.length)t+=`${q.l.replace(/\s*[\(\.].*$/,"")}: ${v.join(", ")}\n`;});});
+ return t.trim();
+}
+document.getElementById("send").onclick=()=>{
+ const t=build();if(!t)return;
+ const url=`https://wa.me/${COACH}?text=`+encodeURIComponent(t);
+ window.open(url,"_blank");
+ document.getElementById("note").innerHTML=`If WhatsApp didn't open, <a href="${url}" target="_blank" rel="noopener">tap here to send</a>.`;
+};
+document.getElementById("copy").onclick=async e=>{
+ const t=build();if(!t)return;
+ try{await navigator.clipboard.writeText(t);e.target.textContent="Copied! Now paste it in WhatsApp to +91 99879 53618";}
+ catch(_){prompt("Copy this text and send it to Coach Addy on WhatsApp:",t);}
+};
+</script>
+</body>
+</html>
